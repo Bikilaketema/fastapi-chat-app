@@ -28,7 +28,7 @@ This project is fully containerized. The only prerequisite is having **Docker** 
 
 1.  **Clone the repository:**
     ```sh
-    git clone [https://github.com/your-username/fastapi-chat-app.git](https://github.com/your-username/fastapi-chat-app.git)
+    git clone [https://github.com/bikilaketema/fastapi-chat-app.git](https://github.com/bikilaketema/fastapi-chat-app.git)
     cd fastapi-chat-app
     ```
 
