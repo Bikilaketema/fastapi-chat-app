@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastAPI Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .scrollbar-thin {
+            scrollbar-width: thin;
+            scrollbar-color: #4b5563 #1f2937;
+        }
+        .scrollbar-webkit::-webkit-scrollbar {
+            width: 8px;
+        }
+        .scrollbar-webkit::-webkit-scrollbar-track {
+            background: #1f2937;
+            border-radius: 10px;
+        }
+        .scrollbar-webkit::-webkit-scrollbar-thumb {
+            background-color: #4b5563;
+            border-radius: 10px;
+            border: 2px solid #1f2937;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans">
+
+    <div id="app-wrapper" class="flex flex-col h-screen max-w-2xl mx-auto p-4">
+        
+        <h1 class="text-3xl font-bold text-center text-blue-400 mb-4">
+            🚀 FastAPI Real-Time Chat
+        </h1>
+
+        <div id="join-view" class="bg-gray-800 p-6 rounded-lg shadow-xl">
+            <h2 class="text-2xl font-semibold mb-4 text-center">Join Chat</h2>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <input type="text" 
+                       id="username-input" 
+                       placeholder="Enter your username" 
+                       class="flex-grow bg-gray-700 text-gray-200 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       autocomplete="off">
+                <button id="join-button" 
+                        class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out">
+                    Join
+                </button>
+            </div>
+        </div>
+
+        <div id="chat-view" class="hidden flex-grow flex flex-col bg-gray-800 rounded-lg shadow-xl overflow-hidden">
+            
+            <div id="message-container" 
+                 class="flex-grow p-4 space-y-3 overflow-y-auto scrollbar-thin scrollbar-webkit">
+            </div>
+
+            <div class="p-4 bg-gray-900 border-t border-gray-700">
+                <form id="message-form" class="flex gap-3">
+                    <input type="text"
+                           id="message-input"
+                           placeholder="Type your message..."
+                           class="flex-grow bg-gray-700 text-gray-200 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           autocomplete="off">
+                    <button type="submit" 
+                            class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition duration-150 ease-in-out">
+                        Send
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const joinView = document.getElementById('join-view');
+        const chatView = document.getElementById('chat-view');
+        const usernameInput = document.getElementById('username-input');
+        const joinButton = document.getElementById('join-button');
+        const messageContainer = document.getElementById('message-container');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+
+        let websocket = null;
+
+        joinButton.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (username) {
+                connectWebSocket(username);
+            } else {
+                alert('Please enter a username.');
+            }
+        });
+
+        usernameInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                joinButton.click();
+            }
+        });
+
+        messageForm.addEventListener('submit', (event) => {
+            event.preventDefault(); 
+            const message = messageInput.value.trim();
+            if (message && websocket) {
+                websocket.send(message);
+                messageInput.value = '';
+            }
+        });
+
+
+        function connectWebSocket(username) {
+
+            const wsProtocol = window.location.protocol === 'https:.' ? 'wss' : 'ws';
+            const wsUrl = `${wsProtocol}://${window.location.host}/ws/${username}`;
+
+            console.log(`Connecting to: ${wsUrl}`);
+            
+            websocket = new WebSocket(wsUrl);
+
+            websocket.onopen = (event) => {
+                console.log('WebSocket connection established.');
+
+                joinView.classList.add('hidden');
+                chatView.classList.remove('hidden');
+                messageInput.focus();
+            };
+
+            websocket.onmessage = (event) => {
+                console.log('Message received:', event.data);
+                
+                const data = JSON.parse(event.data);
+
+                addMessage(data);
+            };
+
+            websocket.onclose = (event) => {
+                console.log('WebSocket connection closed:', event);
+                alert('Connection to chat lost. Please refresh the page to rejoin.');
+                joinView.classList.remove('hidden');
+                chatView.classList.add('hidden');
+            };
+
+            websocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                alert('An error occurred with the chat connection.');
+            };
+        }
+
+
+        function addMessage(data) {
+            const messageElement = document.createElement('div');
+            
+            if (data.type === 'system') {
+                // System message (e.g., "User joined")
+                messageElement.className = 'text-center text-sm text-gray-400 italic';
+                messageElement.textContent = data.message;
+            } else if (data.type === 'chat') {
+                // Chat message
+                messageElement.className = 'bg-gray-700 p-3 rounded-lg shadow';
+                
+                const usernameElement = document.createElement('span');
+                usernameElement.className = 'font-semibold text-blue-300';
+                usernameElement.textContent = `${data.username}: `;
+                
+                const contentElement = document.createElement('span');
+                contentElement.textContent = data.message;
+                
+                messageElement.appendChild(usernameElement);
+                messageElement.appendChild(contentElement);
+            }
+
+            messageContainer.appendChild(messageElement);
+            
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+
+    </script>
+</body>
+</html>
+
