@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: fastapi_chat_app
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the 'app' folder for live-reloading
+      - ./app:/app
